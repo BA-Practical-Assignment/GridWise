@@ -35,6 +35,60 @@ def generate_demand(years: int = 4, seed: int = config.RANDOM_STATE) -> pd.DataF
 
     return pd.DataFrame({"Datetime": idx, "DEMAND_MW": demand.round(1)})
 
+# 2. Synthetic customer fault reports
+LOCATIONS = ["Main Road", "the school", "Church Street", "our street", "the clinic", "Block C",
+             "the shopping centre", "Ward 7", "the taxi rank", "Park Avenue", "the industrial area",
+             "Section B", "Mandela Drive", "the hospital", "our house","Collegepark", "the stadium","the university", "the police station", "the fire station",]
 
+TEMPLATES = {
+    "outage": [
+        "There is no electricity at {loc} since this morning",
+        "Power went off at {loc} and has not come back",
+        "We have been without power for hours near {loc}",
+        "the lights are out in {loc} please help",
+        "Total blackout at {loc} please send a team",
+        "electricity is off again at {loc}",
+        "No power in the whole area around {loc}",
+        "our power tripped and the whole of {loc} is dark",
+    ],
+    "billing": [
+        "My electricity bill is too high this month",
+        "I was charged twice for my account",
+        "I paid my bill but it still shows outstanding",
+        "The amount on my statement does not match my meter reading",
+        "I want to query my electricity account balance",
+        "I never received my bill for last month",
+        "Why was I billed for estimated usage",
+        "my prepaid token was bought but the units did not load",
+    ],
+    "meter_fault": [
+        "My meter is not displaying anything",
+        "The prepaid meter keeps beeping and shows an error",
+        "Meter at {loc} is running too fast",
+        "The electricity meter box is damaged and sparking",
+        "my smart meter stopped working",
+        "Meter reading looks wrong and the display is flickering",
+        "The meter will not accept my token",
+        "Our meter was tampered with and needs inspection",
+    ],
+    "streetlight": [
+        "The street light at {loc} is not working",
+        "Streetlights have been off for a week at {loc}",
+        "A street light is flickering all night near {loc}",
+        "the lamp post outside {loc} is dark and it is unsafe",
+        "Several street lights are on during the day at {loc}",
+        "No lights on the road at {loc} please fix",
+    ],
+    "cable_damage": [
+        "A power line has fallen down at {loc}",
+        "There are exposed wires hanging near {loc}",
+        "A cable is sparking on the ground at {loc}",
+        "The transformer at {loc} is smoking and making a loud noise",
+        "A tree fell on the electricity cables at {loc}",
+        "Broken pole and live wires on the road at {loc}",
+        "A cable was cut by construction workers at {loc}",
+        "pole is leaning and the wires are very low at {loc}",
+    ],
+}
 
 
