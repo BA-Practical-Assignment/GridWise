@@ -1,0 +1,128 @@
+{
+  "data_source": "real",
+  "n_rows": 121296,
+  "date_from": "2004-10-01 01:00:00",
+  "date_to": "2018-08-03 00:00:00",
+  "train_rows": 103101,
+  "test_rows": 18195,
+  "horizon_hours": 24,
+  "forecast_metrics": {
+    "seasonal_naive": {
+      "MAE": 1444.9521297059632,
+      "RMSE": 1909.7854654646494,
+      "MAPE": 9.578624290814505
+    },
+    "hist_gb": {
+      "MAE": 697.076120127885,
+      "RMSE": 919.1556490415882,
+      "MAPE": 4.6721814961057895
+    },
+    "mlp": {
+      "MAE": 689.2889570561047,
+      "RMSE": 911.0601515806782,
+      "MAPE": 4.613131618421184
+    },
+    "lstm": {
+      "MAE": 758.6754740267561,
+      "RMSE": 989.8207092518322,
+      "MAPE": 5.159443685890455
+    }
+  },
+  "extra_metrics": {
+    "sarima_daily": {
+      "MAE": 1606.8380149428233,
+      "RMSE": 1930.6034128990343,
+      "MAPE": 11.151220669483697
+    }
+  },
+  "best_model": "mlp",
+  "hist_gb_best_params": {
+    "learning_rate": 0.05,
+    "max_depth": 8,
+    "max_iter": 200
+  },
+  "hist_gb_cv_mae": 696.6592569113355,
+  "capacity_threshold_MW": 20202.0,
+  "feature_importance": [
+    [
+      "lag_24",
+      1663.8388221826956
+    ],
+    [
+      "dow",
+      281.13107218420146
+    ],
+    [
+      "lag_168",
+      56.86379034056309
+    ],
+    [
+      "month",
+      53.85566097599235
+    ],
+    [
+      "roll_mean_24",
+      25.593757456469422
+    ],
+    [
+      "hour_cos",
+      22.414498687401533
+    ],
+    [
+      "lag_336",
+      19.171573978009064
+    ],
+    [
+      "roll_mean_168",
+      17.41841757675915
+    ]
+  ],
+  "lstm_ran": true,
+  "sarima_ran": true,
+  "fault_classifier": {
+    "category": {
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "n_test": 300
+    },
+    "urgency": {
+      "accuracy": 0.9933333333333333,
+      "macro_f1": 0.9925735074849408,
+      "n_test": 300
+    }
+  },
+  "chatbot_intent_cv_accuracy": 0.8066298342541437,
+  "chatbot_demo": [
+    {
+      "user": "hello",
+      "reply": "Hello! I'm the GridWise assistant. I can help you report a fault, check outage information, answer billing questions or share electricity-saving tips. What do you need?",
+      "intent": "greeting",
+      "confidence": 0.9401446683268317
+    },
+    {
+      "user": "there is a power line down outside my house sparking",
+      "reply": "SAFETY FIRST: stay at least 10 metres away from fallen or damaged lines and keep other people and animals away. Do not touch anything in contact with the line. I've flagged this as HIGH urgency (ticket GW-D01731). Please also call the utility's emergency number: [insert emergency number].",
+      "intent": "cable_damage",
+      "confidence": 0.7774197760853648
+    },
+    {
+      "user": "my bill looks too high this month",
+      "reply": "I can help log a billing query (ticket GW-4BAE91). Please have your account number and the date of your last payment ready. A billing officer will review the account. Prepaid customers should keep their token receipt.",
+      "intent": "billing_query",
+      "confidence": 0.7132460405577569
+    },
+    {
+      "user": "what is the demand forecast for tomorrow",
+      "reply": "Over the next 24 hours demand is forecast to peak at about 18,699 MW around 16:00. No hours are forecast above the capacity warning level (20,202 MW).",
+      "intent": "demand_forecast",
+      "confidence": 0.9862800818229853
+    },
+    {
+      "user": "blah blah purple monkey",
+      "reply": "Sorry, I did not quite understand that. I can help you report a power outage, a meter or street-light fault or a damaged cable, answer billing questions, give energy-saving tips or share the demand forecast. Could you rephrase?",
+      "intent": null,
+      "confidence": 0.1290264876477413
+    }
+  ],
+  "next_day_text": "Over the next 24 hours demand is forecast to peak at about 18,699 MW around 16:00. No hours are forecast above the capacity warning level (20,202 MW)."
+}
