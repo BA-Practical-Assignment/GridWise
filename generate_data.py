@@ -91,4 +91,37 @@ TEMPLATES = {
     ],
 }
 
+FILLERS = ["", "", "", " please urgent", " thanks", " this is the second time I am reporting",
+           " children are at home", " hello", " can someone assist", " ASAP"]
 
+
+def _typo(text: str, rng: random.Random, p: float = 0.04) -> str:
+    chars = list(text)
+    for i in range(len(chars) - 1):
+        if chars[i].isalpha() and rng.random() < p:
+            chars[i], chars[i + 1] = chars[i + 1], chars[i]
+    return "".join(chars)
+
+
+def _urgency(category: str, text: str) -> str:
+    t = text.lower()
+    if category == "cable_damage" or any(w in t for w in ["sparking", "smoking", "fallen", "live wires", "unsafe"]):
+        return "high"
+    if category in {"outage", "meter_fault"} or "hospital" in t or "clinic" in t:
+        return "medium"
+    return "low"
+
+
+def generate_fault_reports(n_per_class: int = 300, seed: int = config.RANDOM_STATE) -> pd.DataFrame:
+    rng = random.Random(seed)
+    rows = []
+    for cat, templates in TEMPLATES.items():
+        for _ in range(n_per_class):
+            text = rng.choice(templates).format(loc=rng.choice(LOCATIONS)) + rng.choice(FILLERS)
+            if rng.random() < 0.5:
+                text = _typo(text, rng)
+            if rng.random() < 0.3:
+                text = text.lower()
+            rows.append({"report": text.strip(), "category": cat, "urgency": _urgency(cat, text)})
+    df = pd.DataFrame(rows).sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df
