@@ -32,3 +32,24 @@ def _pipeline() -> Pipeline:
 
 def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
+
+
+class GridWiseChatbot:
+    def __init__(self, intents_path=config.INTENTS_JSON, fault_models=None,
+                 forecast_fn=None, seed: int = config.RANDOM_STATE):
+        with open(intents_path, encoding="utf-8") as f:
+            self.intents = json.load(f)
+        self.fault_models = fault_models        # optional NLP fault classifier
+        self.forecast_fn = forecast_fn          # optional callable -> forecast text
+        self.rng = random.Random(seed)
+        self.tickets: list[dict] = []
+        self.model = None
+
+    # ---- training / evaluation ----------------------------------------------
+    def _xy(self):
+        X, y = [], []
+        for intent, d in self.intents.items():
+            for p in d["patterns"]:
+                X.append(_clean(p))
+                y.append(intent)
+        return X, y
