@@ -2,7 +2,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 import config
 
 def load_demand(path=None) -> tuple[pd.Series, str]:
