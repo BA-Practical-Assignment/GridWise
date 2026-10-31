@@ -32,3 +32,15 @@ if metrics["data_source"] == "synthetic":
                "for the final results.")
 
 tab1, tab2, tab3, tab4 = st.tabs(["📈 Demand forecast", "🛠️ Fault classifier", "💬 Chatbot", "📊 Model results"])
+
+with tab1:
+    forecast = fc.forecast_next_day(bundle["model"], bundle["history"])
+    thr = bundle["threshold"]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Peak forecast (MW)", f"{forecast.max():,.0f}")
+    c2.metric("Peak hour", f"{forecast.idxmax():%H:%M}")
+    c3.metric("Hours above capacity warning", int((forecast > thr).sum()))
+    chart = pd.DataFrame({"forecast_MW": forecast, "capacity_warning_MW": thr})
+    st.line_chart(chart)
+    msg = fc.describe_forecast(forecast, thr)
+    (st.error if (forecast > thr).any() else st.success)(msg)
