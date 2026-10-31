@@ -120,3 +120,99 @@ def generate_fault_reports(n_per_class: int = 300, seed: int = config.RANDOM_STA
             rows.append({"report": text.strip(), "category": cat, "urgency": _urgency(cat, text)})
     df = pd.DataFrame(rows).sample(frac=1, random_state=seed).reset_index(drop=True)
     return df
+
+INTENTS = {
+    "greeting": {
+        "patterns": ["hello", "hi", "hey there", "good morning", "good afternoon", "good evening",
+                     "howzit", "is anyone there", "hi gridwise", "hello can you help me"],
+        "responses": ["Hello! I'm the GridWise assistant. I can help you report a fault, check outage "
+                      "information, answer billing questions or share electricity-saving tips. What do you need?"],
+    },
+    "goodbye": {
+        "patterns": ["bye", "goodbye", "see you later", "that is all", "thanks bye", "talk later",
+                     "i am done", "cheers bye"],
+        "responses": ["Goodbye! Stay safe and thank you for contacting the utility."],
+    },
+    "thanks": {
+        "patterns": ["thanks", "thank you", "thanks a lot", "much appreciated", "that was helpful",
+                     "great thanks", "awesome thank you"],
+        "responses": ["You're welcome! Is there anything else I can help you with?"],
+    },
+    "report_outage": {
+        "patterns": ["there is no power", "my electricity is off", "power outage in my area",
+                     "the lights went out", "we have a blackout", "no electricity since morning",
+                     "how do i report a power cut", "power is off in my street", "report an outage",
+                     "electricity went off and has not come back"],
+        "responses": ["I'm sorry about the power cut. I've logged an outage report for your area (ticket {ticket}). "
+                      "First check that your own circuit breaker has not tripped. Please tell me your street or "
+                      "ward so the team can be dispatched."],
+    },
+    "outage_status": {
+        "patterns": ["when will the power be back", "is there a planned outage", "outage status",
+                     "how long will the power be off", "is there load reduction today",
+                     "when will electricity be restored", "check maintenance schedule",
+                     "are there scheduled power cuts"],
+        "responses": ["Planned maintenance and restoration times are published by the utility for each area. "
+                      "Give me your ward or suburb and I will pass your query to the control room "
+                      "(ticket {ticket}). For live updates, check the utility's official notices."],
+    },
+    "billing_query": {
+        "patterns": ["my bill is too high", "i was charged twice", "i want to query my account",
+                     "how do i pay my electricity bill", "i did not receive my statement",
+                     "my prepaid token did not load", "why is my account so high",
+                     "dispute my electricity bill", "i paid but it still shows owing",
+                     "where can i buy prepaid electricity"],
+        "responses": ["I can help log a billing query (ticket {ticket}). Please have your account number and "
+                      "the date of your last payment ready. A billing officer will review the account. "
+                      "Prepaid customers should keep their token receipt."],
+    },
+    "meter_fault": {
+        "patterns": ["my meter is not working", "the meter is beeping", "meter shows an error",
+                     "my prepaid meter will not accept the token", "the meter display is blank",
+                     "meter is running too fast", "i think my meter is faulty",
+                     "report a faulty meter"],
+        "responses": ["I've logged a meter fault (ticket {ticket}). Please do not open or repair the meter "
+                      "yourself. A technician will inspect it. Note your meter number if you can."],
+    },
+    "streetlight": {
+        "patterns": ["the street light is broken", "street lights are off on my road",
+                     "report a faulty street light", "the lamp post is dark",
+                     "street light flickering", "no lights on the road at night",
+                     "streetlight on during the day"],
+        "responses": ["Thank you for reporting the street light (ticket {ticket}). Please tell me the street name "
+                      "and the nearest landmark so the maintenance crew can find it."],
+    },
+    "cable_damage": {
+        "patterns": ["a power line has fallen", "there are exposed wires", "a cable is sparking",
+                     "the transformer is smoking", "a tree fell on the power lines",
+                     "live wires on the road", "broken electricity pole",
+                     "dangerous cable near my house"],
+        "responses": ["SAFETY FIRST: stay at least 10 metres away from fallen or damaged lines and keep "
+                      "other people and animals away. Do not touch anything in contact with the line. "
+                      "I've flagged this as HIGH urgency (ticket {ticket}). Please also call the utility's "
+                      "emergency number: [insert emergency number]."],
+    },
+    "saving_tips": {
+        "patterns": ["how can i save electricity", "tips to reduce my electricity usage",
+                     "how do i lower my bill", "what appliances use the most power",
+                     "how can i help during peak demand", "energy saving advice",
+                     "reduce electricity consumption at home"],
+        "responses": ["Tips: (1) switch off geysers outside the morning and evening peaks, (2) use LED lighting, "
+                      "(3) run heavy appliances off-peak, (4) unplug idle electronics, (5) use a timer on the geyser. "
+                      "Reducing use during peak hours helps the whole grid."],
+    },
+    "demand_forecast": {
+        "patterns": ["what is the demand forecast", "show tomorrow's electricity demand",
+                     "will demand be high tomorrow", "forecast for the next 24 hours",
+                     "what is the expected load", "peak demand prediction",
+                     "when is peak demand tomorrow", "predict electricity demand"],
+        "responses": ["{forecast_text}"],
+    },
+    "contact_info": {
+        "patterns": ["how do i contact the utility", "what is your phone number", "where is the nearest office",
+                     "customer service contact", "office hours", "who do i call"],
+        "responses": ["You can reach the utility's customer service office during working hours: "
+                      "[insert contact details]. This chatbot is available 24 hours a day."],
+    },
+}
+
