@@ -77,3 +77,29 @@ def tune_hist_gb(X_train, y_train) -> HistGradientBoostingRegressor:
     model.best_params_ = best
     model.cv_mae_ = best_score
     return model
+
+
+def train_mlp(X_train, y_train):
+    model = make_pipeline(
+        StandardScaler(),
+        MLPRegressor(hidden_layer_sizes=(64, 32), alpha=1e-3, max_iter=300,
+                     random_state=config.RANDOM_STATE),
+    )
+    model.fit(X_train, y_train)
+    return model
+
+
+
+def sarima_daily(train: pd.Series, test: pd.Series):
+    try:
+        from statsmodels.tsa.statespace.sarimax import SARIMAX
+    except ImportError:
+        return None
+    d_train = train.resample("D").mean()
+    d_test = test.resample("D").mean()
+    model = SARIMAX(d_train, order=(1, 1, 1), seasonal_order=(1, 1, 1, 7),
+                    enforce_stationarity=False, enforce_invertibility=False)
+    fit = model.fit(disp=False)
+    pred = fit.forecast(steps=len(d_test))
+    return {"actual": d_test, "pred": pd.Series(pred.values, index=d_test.index),
+            "metrics": metrics(d_test.values, pred.values)}
