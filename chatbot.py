@@ -72,3 +72,20 @@ class GridWiseChatbot:
         probs = self.model.predict_proba([_clean(text)])[0]
         i = int(np.argmax(probs))
         return self.model.classes_[i], float(probs[i])
+        def _new_ticket(self, intent: str, text: str) -> str:
+        ticket = "GW-" + uuid.uuid4().hex[:6].upper()
+        record = {"ticket": ticket, "intent": intent, "text": text}
+        if self.fault_models is not None:
+            from fault_classifier import classify
+            record.update(classify(self.fault_models, text))
+        self.tickets.append(record)
+        return ticket
+
+    def reply(self, text: str) -> dict:
+        if self.model is None:
+            raise RuntimeError("call train() first")
+        if not text.strip():
+            return {"reply": "Please type your question.", "intent": None, "confidence": 0.0}
+        intent, conf = self.predict_intent(text)
+        if conf < CONFIDENCE_THRESHOLD:
+            return {"reply": FALLBACK, "intent": None, "confidence": conf}
