@@ -43,3 +43,32 @@ class GridWiseChatbot:
         self.rng = random.Random(seed)
         self.tickets: list[dict] = []
         self.model = None
+
+    def _xy(self):
+        X, y = [], []
+        for intent, d in self.intents.items():
+            for p in d["patterns"]:
+                X.append(_clean(p))
+                y.append(intent)
+        return X, y
+
+    def train(self):
+        X, y = self._xy()
+        self.model = _pipeline().fit(X, y)
+        return self
+
+    def cross_validate(self, folds: int = 3) -> float:
+        X, y = self._xy()
+        skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=config.RANDOM_STATE)
+        pred = cross_val_predict(_pipeline(), X, y, cv=skf)
+        return float(accuracy_score(y, pred))
+
+    def save(self, path=None):
+        path = path or config.MODELS_DIR / "chatbot_intents.joblib"
+        config.MODELS_DIR.mkdir(exist_ok=True)
+        joblib.dump(self.model, path)
+
+    def predict_intent(self, text: str):
+        probs = self.model.predict_proba([_clean(text)])[0]
+        i = int(np.argmax(probs))
+        return self.model.classes_[i], float(probs[i])
