@@ -89,3 +89,18 @@ class GridWiseChatbot:
         intent, conf = self.predict_intent(text)
         if conf < CONFIDENCE_THRESHOLD:
             return {"reply": FALLBACK, "intent": None, "confidence": conf}
+
+        template = self.rng.choice(self.intents[intent]["responses"])
+        ticket = self._new_ticket(intent, text) if intent in FAULT_INTENTS else ""
+        if intent == "demand_forecast":
+            ftxt = self.forecast_fn() if self.forecast_fn else \
+                "The demand forecast is not connected in this session."
+            msg = template.format(forecast_text=ftxt)
+        else:
+            msg = template.format(ticket=ticket, forecast_text="")
+        out = {"reply": msg, "intent": intent, "confidence": conf}
+        if ticket:
+            out["ticket"] = ticket
+            out["classification"] = {k: v for k, v in self.tickets[-1].items()
+                                     if k in ("category", "urgency")}
+        return out
