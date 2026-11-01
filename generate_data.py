@@ -216,3 +216,34 @@ INTENTS = {
     },
 }
 
+EXTRA_PATTERNS = {
+    "greeting": ["hey", "hello gridwise assistant", "good day", "hi there can you help", "morning", "hello is this the electricity chatbot"],
+    "goodbye": ["ok bye", "see you", "i have to go now", "no that is everything thanks", "have a good day bye", "goodbye for now"],
+    "thanks": ["cheers", "thank you very much", "many thanks", "thanks for the help", "that helps thank you", "appreciate it"],
+    "report_outage": ["the power is out", "no electricity in our area", "power cut in my street", "we are in the dark", "our lights are off and have been for hours", "electricity is gone", "there is a blackout in my suburb", "i want to report that the power is off"],
+    "outage_status": ["when is electricity coming back", "when will the lights come back on", "is the power cut planned", "what time will power be restored", "how long is the maintenance outage", "is my area affected by load reduction", "when is the next scheduled outage"],
+    "billing_query": ["my bill is wrong", "billing problem on my account", "i have a question about my statement", "i was overcharged", "how do i buy electricity units", "my payment is not reflecting", "the amount i owe is incorrect", "how to pay my account"],
+    "meter_fault": ["meter keeps beeping", "the meter is broken", "my smart meter has stopped", "prepaid meter is not taking units", "meter screen is dead", "electricity meter is faulty", "meter is sparking", "my meter shows wrong readings"],
+    "streetlight": ["street lamp not working", "the light on our road is out", "lamp post is broken", "street lights not coming on at night", "report broken street lighting", "street light stays on all day", "the road is dark because the lights are off"],
+    "cable_damage": ["wire fell down and is sparking", "a pole has fallen on the road", "cables hanging low", "there is smoke coming from the transformer", "a live wire is lying on the ground", "tree on the power line", "electric pole is broken and dangerous", "the substation box is sparking"],
+    "saving_tips": ["can i get tips to use less power", "how to use less electricity", "ways to cut my power usage", "how do i reduce peak hour usage", "advice to save energy at home", "how can i lower electricity use", "what can i do to use less electricity"],
+    "demand_forecast": ["what will demand be tomorrow", "how much electricity will be used tomorrow", "show me the load forecast", "is tomorrow a high demand day", "what is the peak hour tomorrow", "next 24 hour demand", "expected electricity demand"],
+    "contact_info": ["phone number for the electricity office", "how can i reach customer care", "where do i go to speak to someone", "contact details please", "what are your opening hours", "can i speak to a person"],
+}
+for _k, _v in EXTRA_PATTERNS.items():
+    INTENTS[_k]["patterns"].extend(_v)
+
+
+def main():
+    config.DATA_DIR.mkdir(exist_ok=True)
+    demand = generate_demand()
+    demand.to_csv(config.SYNTHETIC_DEMAND_CSV, index=False)
+    faults = generate_fault_reports()
+    faults.to_csv(config.FAULT_REPORTS_CSV, index=False)
+    with open(config.INTENTS_JSON, "w", encoding="utf-8") as f:
+        json.dump(INTENTS, f, indent=2)
+    print(f"demand rows: {len(demand)} | fault reports: {len(faults)} | intents: {len(INTENTS)}")
+
+
+if __name__ == "__main__":
+    main()
