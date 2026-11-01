@@ -44,3 +44,10 @@ def plot_forecast(actual, preds: dict, out, days: int = 14):
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
+
+def plot_model_comparison(results: dict, out):
+    names = list(results)
+    mape = [results[n]["MAPE"] for n in names]
+    fig, ax = plt.subplots(figsize=(6, 3.4))
+    bars = ax.bar(names, mape, color=[NAVY if n != min(results, key=lambda k: results[k]["MAPE"]) else AMBER
+                                      for n in names])
