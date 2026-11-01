@@ -103,3 +103,27 @@ def sarima_daily(train: pd.Series, test: pd.Series):
     pred = fit.forecast(steps=len(d_test))
     return {"actual": d_test, "pred": pd.Series(pred.values, index=d_test.index),
             "metrics": metrics(d_test.values, pred.values)}
+
+
+def lstm_forecast(train: pd.Series, test: pd.Series, window: int = 168, epochs: int = 12):
+    
+    try:
+        import torch
+        from torch import nn
+    except ImportError:
+        return None
+
+    torch.manual_seed(config.RANDOM_STATE)
+    full = pd.concat([train, test])
+    mu, sd = train.mean(), train.std()
+    z = ((full - mu) / sd).values.astype("float32")
+
+   
+    n = len(z) - window - H + 1
+    Xs = np.stack([z[i:i + window] for i in range(n)])[..., None]
+    ys = np.array([z[i + window - 1 + H] for i in range(n)], dtype="float32")
+    target_idx = full.index[window - 1 + H: window - 1 + H + n]
+
+    is_test = target_idx >= test.index[0]
+    X_tr, y_tr = Xs[~is_test], ys[~is_test]
+    X_te, y_te = Xs[is_test], ys[is_test]
