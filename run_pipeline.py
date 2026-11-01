@@ -51,3 +51,11 @@ def plot_model_comparison(results: dict, out):
     fig, ax = plt.subplots(figsize=(6, 3.4))
     bars = ax.bar(names, mape, color=[NAVY if n != min(results, key=lambda k: results[k]["MAPE"]) else AMBER
                                       for n in names])
+    for b, v in zip(bars, mape):
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.05, f"{v:.2f}%", ha="center", fontsize=9)
+    ax.set_ylabel("MAPE (%) - lower is better")
+    ax.set_title("Model comparison on the test period")
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
