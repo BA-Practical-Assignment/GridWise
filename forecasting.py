@@ -44,3 +44,36 @@ def make_features(s: pd.Series, country: str = "US") -> pd.DataFrame:
     df["hour_sin"] = np.sin(2 * np.pi * idx.hour / 24)
     df["hour_cos"] = np.cos(2 * np.pi * idx.hour / 24)
     return df
+
+
+
+def build_supervised(s: pd.Series, country: str = "US"):
+    X = make_features(s, country)
+    y = s
+    ok = X.notna().all(axis=1)
+    return X[ok], y[ok]
+
+
+
+def tune_hist_gb(X_train, y_train) -> HistGradientBoostingRegressor:
+    
+    grid = [
+        {"learning_rate": lr, "max_depth": md, "max_iter": it}
+        for lr in (0.05, 0.1) for md in (4, 8) for it in (200,)
+    ]
+    tscv = TimeSeriesSplit(n_splits=3)
+    best, best_score = None, np.inf
+    for params in grid:
+        scores = []
+        for tr, va in tscv.split(X_train):
+            m = HistGradientBoostingRegressor(random_state=config.RANDOM_STATE, **params)
+            m.fit(X_train.iloc[tr], y_train.iloc[tr])
+            scores.append(np.mean(np.abs(y_train.iloc[va] - m.predict(X_train.iloc[va]))))
+        score = float(np.mean(scores))
+        if score < best_score:
+            best, best_score = params, score
+    model = HistGradientBoostingRegressor(random_state=config.RANDOM_STATE, **best)
+    model.fit(X_train, y_train)
+    model.best_params_ = best
+    model.cv_mae_ = best_score
+    return model
