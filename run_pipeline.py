@@ -107,3 +107,24 @@ def main(demand_path=None):
             extra["sarima_daily"] = sar["metrics"]
         else:
             print("   statsmodels not installed -> SARIMA skipped")
+
+plot_forecast(y_te, {k: v.dropna() for k, v in preds.items()}, R / "05_forecast_vs_actual.png")
+    plot_model_comparison(results, R / "06_model_comparison.png")
+
+    best = min(results, key=lambda k: results[k]["MAPE"])
+    thr = fc.capacity_threshold(train)
+    next_day = fc.forecast_next_day(gb, series)
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    ax.plot(next_day.index, next_day.values, color=NAVY, lw=2)
+    ax.axhline(thr, color="#C0392B", ls="--", label=f"Capacity warning ({thr:,.0f} MW)")
+    ax.set_title("Next-24-hour demand forecast")
+    ax.set_ylabel("MW")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25)
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig(R / "07_next_day_forecast.png", dpi=160)
+    plt.close(fig)
+
+    joblib.dump({"model": gb, "history": series.iloc[-24 * 30:], "threshold": thr},
+                config.MODELS_DIR / "forecaster.joblib")
