@@ -128,3 +128,28 @@ plot_forecast(y_te, {k: v.dropna() for k, v in preds.items()}, R / "05_forecast_
 
     joblib.dump({"model": gb, "history": series.iloc[-24 * 30:], "threshold": thr},
                 config.MODELS_DIR / "forecaster.joblib")
+
+from sklearn.inspection import permutation_importance
+    sample = X_te.sample(min(1500, len(X_te)), random_state=config.RANDOM_STATE)
+    imp = permutation_importance(gb, sample, y_te.loc[sample.index], n_repeats=3,
+                                 random_state=config.RANDOM_STATE, scoring="neg_mean_absolute_error")
+    importance = sorted(zip(X_te.columns, imp.importances_mean), key=lambda t: -t[1])[:8]
+
+   
+    faults = pd.read_csv(config.FAULT_REPORTS_CSV)
+    fmodels = fcls.train_and_evaluate(faults)
+    fcls.save(fmodels)
+    plot_confusion(fmodels["category"]["confusion"], fmodels["category"]["labels"],
+                   R / "08_fault_confusion.png", "Fault category classifier")
+    print(f"[nlp] category acc={fmodels['category']['accuracy']:.3f}  urgency acc={fmodels['urgency']['accuracy']:.3f}")
+
+    
+    bot = GridWiseChatbot(fault_models={k: v["model"] for k, v in fmodels.items()},
+                          forecast_fn=fc.make_forecast_fn(joblib.load(config.MODELS_DIR / "forecaster.joblib"))).train()
+    bot.save()
+    cv_acc = bot.cross_validate()
+    demo_inputs = ["hello", "there is a power line down outside my house sparking",
+                   "my bill looks too high this month", "what is the demand forecast for tomorrow",
+                   "blah blah purple monkey"]
+    transcript = [{"user": u, **{k: v for k, v in bot.reply(u).items() if k in ("reply", "intent", "confidence")}}
+                  for u in demo_inputs]
