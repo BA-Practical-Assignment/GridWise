@@ -153,3 +153,40 @@ from sklearn.inspection import permutation_importance
                    "blah blah purple monkey"]
     transcript = [{"user": u, **{k: v for k, v in bot.reply(u).items() if k in ("reply", "intent", "confidence")}}
                   for u in demo_inputs]
+
+summary = {
+        "data_source": source,
+        "n_rows": int(len(series)),
+        "date_from": str(series.index[0]),
+        "date_to": str(series.index[-1]),
+        "train_rows": int(len(train)), "test_rows": int(len(test)),
+        "horizon_hours": config.HORIZON,
+        "forecast_metrics": results,
+        "extra_metrics": extra,
+        "best_model": best,
+        "hist_gb_best_params": gb.best_params_,
+        "hist_gb_cv_mae": gb.cv_mae_,
+        "capacity_threshold_MW": thr,
+        "feature_importance": [(n, float(v)) for n, v in importance],
+        "lstm_ran": lstm is not None,
+        "sarima_ran": sar is not None,
+        "fault_classifier": {k: {"accuracy": v["accuracy"], "macro_f1": v["macro_f1"], "n_test": v["n_test"]}
+                             for k, v in fmodels.items()},
+        "chatbot_intent_cv_accuracy": cv_acc,
+        "chatbot_demo": transcript,
+        "next_day_text": fc.describe_forecast(next_day, thr),
+    }
+    with open(R / "metrics.json", "w") as f:
+        json.dump(summary, f, indent=2)
+    print("\n=== FORECAST RESULTS (test period) ===")
+    for n, m in results.items():
+        print(f"{n:15s} MAE={m['MAE']:.1f}  RMSE={m['RMSE']:.1f}  MAPE={m['MAPE']:.2f}%")
+    print(f"best model: {best}")
+    print(f"chatbot intent CV accuracy: {cv_acc:.3f}")
+    print(f"results saved to {R}")
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--demand", default=None, help="path to a real hourly demand CSV (e.g. PJM AEP_hourly.csv)")
+    main(ap.parse_args().demand)
