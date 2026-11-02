@@ -84,3 +84,14 @@ with tab3:
             audio_bytes, mime = voice.synthesize(reply)
             if audio_bytes:
                 st.session_state.reply_audio = (audio_bytes, mime)
+
+       
+        for who, msg in st.session_state.history:
+            with st.chat_message("assistant" if who == "bot" else "user"):
+                st.write(msg)
+        reply_audio = st.session_state.pop("reply_audio", None)      
+        if reply_audio:
+            st.audio(reply_audio[0], format=reply_audio[1], autoplay=True)
+                
+
+   
