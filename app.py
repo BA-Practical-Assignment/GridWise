@@ -54,3 +54,33 @@ with tab1:
         res = fcls.classify(fault_models, text)
         st.write(f"**Category:** {res['category']}  (confidence {res['category_confidence']:.0%})")
         st.write(f"**Urgency:** {res['urgency']}")
+
+with tab3:
+    
+    mode = st.radio("How would you like to chat?", ["💬 Text chat", "🎙️ Voice chat"], horizontal=True)
+    voice_mode = mode.startswith("🎙️")
+    if voice_mode:
+        speak_replies = True
+        if not voice.stt_available():
+            st.warning("Voice input needs the SpeechRecognition package:  `pip install SpeechRecognition`. "
+                       "Until then you can still type below.")
+        if not voice.tts_available():
+            st.info("To HEAR the replies install a speech engine:  `pip install pyttsx3` (offline) "
+                    "or `pip install gTTS` (online). Replies will show as text until then.")
+    else:
+        speak_replies = st.toggle("🔊 Read replies aloud", value=False,
+                                  help="Needs pyttsx3 or gTTS (see voice.py)")
+
+    if "history" not in st.session_state:
+        st.session_state.history = [("bot", "Hello! I'm the GridWise assistant. How can I help?")]
+    st.session_state.setdefault("mic_n", 0)
+
+    def handle_message(text: str, speak: bool):
+        """Send one user message to the bot and (optionally) prepare a spoken reply."""
+        st.session_state.history.append(("user", text))
+        reply = bot.reply(text)["reply"]
+        st.session_state.history.append(("bot", reply))
+        if speak:
+            audio_bytes, mime = voice.synthesize(reply)
+            if audio_bytes:
+                st.session_state.reply_audio = (audio_bytes, mime)
