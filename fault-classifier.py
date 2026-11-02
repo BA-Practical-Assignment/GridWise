@@ -1,6 +1,5 @@
 import joblib
 import pandas as pd
-
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
@@ -21,7 +20,8 @@ def build_pipeline() -> Pipeline:
     return Pipeline([("tfidf", feats),
                      ("clf", LogisticRegression(max_iter=2000, C=5.0))])
 
-                     def train_and_evaluate(df: pd.DataFrame) -> dict:
+
+def train_and_evaluate(df: pd.DataFrame) -> dict:
     out = {}
     for target in ("category", "urgency"):
         X_tr, X_te, y_tr, y_te = train_test_split(
@@ -41,7 +41,8 @@ def build_pipeline() -> Pipeline:
         }
     return out
 
-    def save(models: dict, path=None):
+
+def save(models: dict, path=None):
     path = path or config.MODELS_DIR / "fault_classifier.joblib"
     config.MODELS_DIR.mkdir(exist_ok=True)
     joblib.dump({k: v["model"] for k, v in models.items()}, path)
