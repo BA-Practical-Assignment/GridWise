@@ -40,3 +40,20 @@ def build_pipeline() -> Pipeline:
             "n_test": int(len(y_te)),
         }
     return out
+
+    def save(models: dict, path=None):
+    path = path or config.MODELS_DIR / "fault_classifier.joblib"
+    config.MODELS_DIR.mkdir(exist_ok=True)
+    joblib.dump({k: v["model"] for k, v in models.items()}, path)
+
+
+def load(path=None):
+    path = path or config.MODELS_DIR / "fault_classifier.joblib"
+    return joblib.load(path)
+
+
+def classify(models: dict, text: str) -> dict:
+    cat = models["category"].predict([text])[0]
+    cat_conf = float(models["category"].predict_proba([text]).max())
+    urg = models["urgency"].predict([text])[0]
+    return {"category": cat, "category_confidence": cat_conf, "urgency": urg}
