@@ -45,21 +45,40 @@ def plot_forecast(actual, preds: dict, out, days: int = 14):
     fig.savefig(out, dpi=160)
     plt.close(fig)
 
+
 def plot_model_comparison(results: dict, out):
     names = list(results)
     mape = [results[n]["MAPE"] for n in names]
     fig, ax = plt.subplots(figsize=(6, 3.4))
     bars = ax.bar(names, mape, color=[NAVY if n != min(results, key=lambda k: results[k]["MAPE"]) else AMBER
                                       for n in names])
-     for b, v in zip(bars, mape):
-            ax.text(b.get_x() + b.get_width() / 2, v + 0.05, f"{v:.2f}%", ha="center", fontsize=9)
-        ax.set_ylabel("MAPE (%) - lower is better")
-        ax.set_title("Model comparison on the test period")
-        ax.grid(axis="y", alpha=0.25)
-        fig.tight_layout()
-        fig.savefig(out, dpi=160)
-        plt.close(fig)
-    
+    for b, v in zip(bars, mape):
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.05, f"{v:.2f}%", ha="center", fontsize=9)
+    ax.set_ylabel("MAPE (%) - lower is better")
+    ax.set_title("Model comparison on the test period")
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def plot_confusion(cm, labels, out, title):
+    fig, ax = plt.subplots(figsize=(4.8, 4.2))
+    ax.imshow(cm, cmap="Blues")
+    ax.set_xticks(range(len(labels)), labels, rotation=40, ha="right", fontsize=8)
+    ax.set_yticks(range(len(labels)), labels, fontsize=8)
+    for i in range(len(labels)):
+        for j in range(len(labels)):
+            ax.text(j, i, cm[i][j], ha="center", va="center",
+                    color="white" if cm[i][j] > np.max(cm) / 2 else "black", fontsize=8)
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("Actual")
+    ax.set_title(title, fontsize=10)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
 def main(demand_path=None):
     config.RESULTS_DIR.mkdir(exist_ok=True)
     config.MODELS_DIR.mkdir(exist_ok=True)
@@ -75,40 +94,41 @@ def main(demand_path=None):
     analysis.plot_acf(series, R / "03_acf.png")
     analysis.plot_profiles(series, R / "04_profiles.png")
 
+    
     train, test = du.chronological_split(series)
-        X, y = fc.build_supervised(series)
-        cut = test.index[0]
-        X_tr, y_tr = X[X.index < cut], y[y.index < cut]
-        X_te, y_te = X[X.index >= cut], y[y.index >= cut]
-    
-        preds = {"seasonal_naive": series.shift(168).loc[X_te.index]}
-        print("[forecast] tuning HistGradientBoosting with walk-forward CV ...")
-        gb = fc.tune_hist_gb(X_tr, y_tr)
-        preds["hist_gb"] = pd.Series(gb.predict(X_te), index=X_te.index)
-        print("[forecast] training MLP ...")
-        mlp = fc.train_mlp(X_tr, y_tr)
-        preds["mlp"] = pd.Series(mlp.predict(X_te), index=X_te.index)
-    
-        results = {n: fc.metrics(y_te, p) for n, p in preds.items()}
+    X, y = fc.build_supervised(series)
+    cut = test.index[0]
+    X_tr, y_tr = X[X.index < cut], y[y.index < cut]
+    X_te, y_te = X[X.index >= cut], y[y.index >= cut]
+
+    preds = {"seasonal_naive": series.shift(168).loc[X_te.index]}
+    print("[forecast] tuning HistGradientBoosting with walk-forward CV ...")
+    gb = fc.tune_hist_gb(X_tr, y_tr)
+    preds["hist_gb"] = pd.Series(gb.predict(X_te), index=X_te.index)
+    print("[forecast] training MLP ...")
+    mlp = fc.train_mlp(X_tr, y_tr)
+    preds["mlp"] = pd.Series(mlp.predict(X_te), index=X_te.index)
+
+    results = {n: fc.metrics(y_te, p) for n, p in preds.items()}
 
     print("[forecast] LSTM (needs torch) ...")
-        lstm = fc.lstm_forecast(train, test)
-        if lstm is not None:
-            common = X_te.index.intersection(lstm["pred"].index)
-            preds["lstm"] = lstm["pred"].loc[common].reindex(X_te.index)
-            results["lstm"] = fc.metrics(y_te.loc[common], lstm["pred"].loc[common])
-        else:
-            print("   torch not installed -> LSTM skipped")
-    
-        print("[forecast] SARIMA on daily means (needs statsmodels) ...")
-        sar = fc.sarima_daily(train, test)
-        extra = {}
-        if sar is not None:
-            extra["sarima_daily"] = sar["metrics"]
-        else:
-            print("   statsmodels not installed -> SARIMA skipped")
+    lstm = fc.lstm_forecast(train, test)
+    if lstm is not None:
+        common = X_te.index.intersection(lstm["pred"].index)
+        preds["lstm"] = lstm["pred"].loc[common].reindex(X_te.index)
+        results["lstm"] = fc.metrics(y_te.loc[common], lstm["pred"].loc[common])
+    else:
+        print("   torch not installed -> LSTM skipped")
 
-plot_forecast(y_te, {k: v.dropna() for k, v in preds.items()}, R / "05_forecast_vs_actual.png")
+    print("[forecast] SARIMA on daily means (needs statsmodels) ...")
+    sar = fc.sarima_daily(train, test)
+    extra = {}
+    if sar is not None:
+        extra["sarima_daily"] = sar["metrics"]
+    else:
+        print("   statsmodels not installed -> SARIMA skipped")
+
+    plot_forecast(y_te, {k: v.dropna() for k, v in preds.items()}, R / "05_forecast_vs_actual.png")
     plot_model_comparison(results, R / "06_model_comparison.png")
 
     best = min(results, key=lambda k: results[k]["MAPE"])
@@ -129,7 +149,8 @@ plot_forecast(y_te, {k: v.dropna() for k, v in preds.items()}, R / "05_forecast_
     joblib.dump({"model": gb, "history": series.iloc[-24 * 30:], "threshold": thr},
                 config.MODELS_DIR / "forecaster.joblib")
 
-from sklearn.inspection import permutation_importance
+    
+    from sklearn.inspection import permutation_importance
     sample = X_te.sample(min(1500, len(X_te)), random_state=config.RANDOM_STATE)
     imp = permutation_importance(gb, sample, y_te.loc[sample.index], n_repeats=3,
                                  random_state=config.RANDOM_STATE, scoring="neg_mean_absolute_error")
@@ -154,7 +175,8 @@ from sklearn.inspection import permutation_importance
     transcript = [{"user": u, **{k: v for k, v in bot.reply(u).items() if k in ("reply", "intent", "confidence")}}
                   for u in demo_inputs]
 
-summary = {
+    
+    summary = {
         "data_source": source,
         "n_rows": int(len(series)),
         "date_from": str(series.index[0]),
