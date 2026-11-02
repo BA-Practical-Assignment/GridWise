@@ -115,3 +115,53 @@ def synthesize(text: str):
         except Exception:
             pass
     return None, None
+
+def _recognise(recognizer, audio) -> str | None:
+    """Try the online recogniser, then the offline one. Returns text or None."""
+    import speech_recognition as sr
+    try:
+        return recognizer.recognize_google(audio, language=LANGUAGE)
+    except sr.UnknownValueError:
+        return None                       
+    except sr.RequestError:
+        pass                             
+    if _has("pocketsphinx"):
+        try:
+            return recognizer.recognize_sphinx(audio)
+        except Exception:
+            return None
+    return None
+
+
+def listen(timeout: float = 8, phrase_limit: float = 15) -> str | None:
+    """Record from the microphone and return what was said (terminal chat).
+
+    Returns None if nothing was heard / understood or the microphone is unusable.
+    """
+    if not microphone_available():
+        return None
+    import speech_recognition as sr
+    r = sr.Recognizer()
+    try:
+        with sr.Microphone() as source:
+            r.adjust_for_ambient_noise(source, duration=0.6)
+            audio = r.listen(source, timeout=timeout, phrase_time_limit=phrase_limit)
+    except sr.WaitTimeoutError:
+        return None
+    except Exception:
+        return None
+    return _recognise(r, audio)
+
+
+def transcribe(wav_bytes: bytes) -> str | None:
+    """Turn recorded WAV bytes into text (used by the dashboard's microphone widget)."""
+    if not stt_available():
+        return None
+    import speech_recognition as sr
+    r = sr.Recognizer()
+    try:
+        with sr.AudioFile(io.BytesIO(wav_bytes)) as source:
+            audio = r.record(source)
+    except Exception:
+        return None
+    return _recognise(r, audio)
