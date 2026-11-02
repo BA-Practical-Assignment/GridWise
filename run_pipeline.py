@@ -51,6 +51,17 @@ def plot_model_comparison(results: dict, out):
     fig, ax = plt.subplots(figsize=(6, 3.4))
     bars = ax.bar(names, mape, color=[NAVY if n != min(results, key=lambda k: results[k]["MAPE"]) else AMBER
                                       for n in names])
+<<<<<<< HEAD
+     for b, v in zip(bars, mape):
+            ax.text(b.get_x() + b.get_width() / 2, v + 0.05, f"{v:.2f}%", ha="center", fontsize=9)
+        ax.set_ylabel("MAPE (%) - lower is better")
+        ax.set_title("Model comparison on the test period")
+        ax.grid(axis="y", alpha=0.25)
+        fig.tight_layout()
+        fig.savefig(out, dpi=160)
+        plt.close(fig)
+    
+=======
     for b, v in zip(bars, mape):
         ax.text(b.get_x() + b.get_width() / 2, v + 0.05, f"{v:.2f}%", ha="center", fontsize=9)
     ax.set_ylabel("MAPE (%) - lower is better")
@@ -90,3 +101,4 @@ def main(demand_path=None):
     analysis.plot_decomposition(series, R / "02_decomposition.png")
     analysis.plot_acf(series, R / "03_acf.png")
     analysis.plot_profiles(series, R / "04_profiles.png")    
+>>>>>>> 96839ef4e7ebe230b5bbd98c40af5ca8d3cbc23d
