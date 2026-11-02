@@ -172,3 +172,36 @@ def lstm_forecast(train: pd.Series, test: pd.Series, window: int = 168, epochs: 
     idx = target_idx[is_test]
     return {"pred": pd.Series(pred, index=idx), "actual": pd.Series(actual, index=idx),
             "metrics": metrics(actual, pred)}
+
+def forecast_next_day(model, history: pd.Series, country: str = "US") -> pd.Series:
+    """Forecast the 24 hours after the last observation in `history`."""
+    future_idx = pd.date_range(history.index[-1] + pd.Timedelta(hours=1), periods=H, freq="h")
+    extended = history.reindex(history.index.append(future_idx))
+    feats = make_features(extended, country).loc[future_idx]
+    assert not feats.isna().any().any(), "history too short for the lag features"
+    return pd.Series(model.predict(feats), index=future_idx, name="forecast_MW")
+
+
+def capacity_threshold(train: pd.Series) -> float:
+    return float(train.quantile(config.CAPACITY_PERCENTILE))
+
+
+def describe_forecast(fc: pd.Series, threshold: float) -> str:
+    peak_t, peak_v = fc.idxmax(), fc.max()
+    over = fc[fc > threshold]
+    txt = (f"Over the next 24 hours demand is forecast to peak at about {peak_v:,.0f} MW "
+           f"around {peak_t:%H:%M}.")
+    if len(over):
+        txt += (f" WARNING: {len(over)} hour(s) are forecast above the capacity warning level "
+                f"of {threshold:,.0f} MW - consider load-reduction measures.")
+    else:
+        txt += f" No hours are forecast above the capacity warning level ({threshold:,.0f} MW)."
+    return txt
+
+
+def make_forecast_fn(bundle: dict):
+  
+    def _fn():
+        fc = forecast_next_day(bundle["model"], bundle["history"])
+        return describe_forecast(fc, bundle["threshold"])
+    return _fn
