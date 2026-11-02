@@ -20,3 +20,23 @@ def build_pipeline() -> Pipeline:
     ])
     return Pipeline([("tfidf", feats),
                      ("clf", LogisticRegression(max_iter=2000, C=5.0))])
+
+                     def train_and_evaluate(df: pd.DataFrame) -> dict:
+    out = {}
+    for target in ("category", "urgency"):
+        X_tr, X_te, y_tr, y_te = train_test_split(
+            df["report"], df[target], test_size=0.2, stratify=df[target],
+            random_state=config.RANDOM_STATE)
+        pipe = build_pipeline().fit(X_tr, y_tr)
+        pred = pipe.predict(X_te)
+        labels = sorted(df[target].unique())
+        out[target] = {
+            "model": pipe,
+            "accuracy": float(accuracy_score(y_te, pred)),
+            "macro_f1": float(f1_score(y_te, pred, average="macro")),
+            "labels": labels,
+            "confusion": confusion_matrix(y_te, pred, labels=labels).tolist(),
+            "report": classification_report(y_te, pred, zero_division=0),
+            "n_test": int(len(y_te)),
+        }
+    return out
