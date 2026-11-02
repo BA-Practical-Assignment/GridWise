@@ -51,7 +51,6 @@ def plot_model_comparison(results: dict, out):
     fig, ax = plt.subplots(figsize=(6, 3.4))
     bars = ax.bar(names, mape, color=[NAVY if n != min(results, key=lambda k: results[k]["MAPE"]) else AMBER
                                       for n in names])
-<<<<<<< HEAD
      for b, v in zip(bars, mape):
             ax.text(b.get_x() + b.get_width() / 2, v + 0.05, f"{v:.2f}%", ha="center", fontsize=9)
         ax.set_ylabel("MAPE (%) - lower is better")
@@ -61,44 +60,17 @@ def plot_model_comparison(results: dict, out):
         fig.savefig(out, dpi=160)
         plt.close(fig)
     
-=======
-    for b, v in zip(bars, mape):
-        ax.text(b.get_x() + b.get_width() / 2, v + 0.05, f"{v:.2f}%", ha="center", fontsize=9)
-    ax.set_ylabel("MAPE (%) - lower is better")
-    ax.set_title("Model comparison on the test period")
-    ax.grid(axis="y", alpha=0.25)
-    fig.tight_layout()
-    fig.savefig(out, dpi=160)
-    plt.close(fig)
-
-def plot_confusion(cm, labels, out, title):
-    fig, ax = plt.subplots(figsize=(4.8, 4.2))
-    ax.imshow(cm, cmap="Blues")
-    ax.set_xticks(range(len(labels)), labels, rotation=40, ha="right", fontsize=8)
-    ax.set_yticks(range(len(labels)), labels, fontsize=8)
-    for i in range(len(labels)):
-        for j in range(len(labels)):
-            ax.text(j, i, cm[i][j], ha="center", va="center",
-                    color="white" if cm[i][j] > np.max(cm) / 2 else "black", fontsize=8)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("Actual")
-    ax.set_title(title, fontsize=10)
-    fig.tight_layout()
-    fig.savefig(out, dpi=160)
-    plt.close(fig)
-
-
 def main(demand_path=None):
     config.RESULTS_DIR.mkdir(exist_ok=True)
     config.MODELS_DIR.mkdir(exist_ok=True)
     ensure_synthetic_files()
     R = config.RESULTS_DIR
 
+    
     series, source = du.load_demand(demand_path)
     print(f"[data] source={source} rows={len(series)} range={series.index[0]} -> {series.index[-1]} "
           f"(filled {series.attrs.get('n_missing_filled', 0)} missing hours)")
     analysis.plot_overview(series, R / "01_overview.png")
     analysis.plot_decomposition(series, R / "02_decomposition.png")
     analysis.plot_acf(series, R / "03_acf.png")
-    analysis.plot_profiles(series, R / "04_profiles.png")    
->>>>>>> 96839ef4e7ebe230b5bbd98c40af5ca8d3cbc23d
+    analysis.plot_profiles(series, R / "04_profiles.png")
