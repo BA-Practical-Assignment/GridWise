@@ -110,4 +110,13 @@ with tab3:
                         ("bot", "Sorry, I could not hear that clearly. Please try again or type your message."))
                 st.rerun()            
 
+
+        prompt = st.chat_input("Type here: outages, billing, faults, tips or the demand forecast")
+    if prompt:
+        handle_message(prompt, speak=speak_replies)
+        st.rerun()
+
+    if bot.tickets:
+        with st.expander("Logged tickets"):
+            st.dataframe(pd.DataFrame(bot.tickets))
    
