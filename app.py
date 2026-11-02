@@ -119,4 +119,11 @@ with tab3:
     if bot.tickets:
         with st.expander("Logged tickets"):
             st.dataframe(pd.DataFrame(bot.tickets))
-   
+
+with tab4:
+    st.subheader("Forecast accuracy on the test period")
+    st.dataframe(pd.DataFrame(metrics["forecast_metrics"]).T.round(2))
+    for img in ["05_forecast_vs_actual.png", "06_model_comparison.png", "02_decomposition.png", "03_acf.png"]:
+        p = config.RESULTS_DIR / img
+        if p.exists():
+            st.image(str(p))
