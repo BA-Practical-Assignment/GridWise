@@ -47,3 +47,32 @@ def voice_ready() -> bool:
     print("   Install with:  pip install SpeechRecognition pyaudio pyttsx3")
     print("   Staying in text chat.\n")
     return False
+
+def say(text: str, mode: str):
+    print(f"Bot: {text}\n")
+    if mode == "voice":
+        voice.speak(text)
+
+
+def get_user_input(mode: str):
+    """Return (text, mode). In voice mode, falls back to typing if nothing is heard."""
+    if mode == "voice":
+        print("[listening... speak now]")
+        heard = voice.listen()
+        if heard:
+            print(f"You (voice): {heard}")
+            return heard, mode
+        print("[I did not catch that - please type instead, or press Enter to try speaking again]")
+        typed = input("You: ")
+        return (typed if typed.strip() else ""), mode
+    return input("You: "), mode
+
+
+def chat(mode: str):
+    bot = build_bot()
+    if mode == "voice" and not voice_ready():
+        mode = "text"
+    print(f"\nGridWise assistant - {mode.upper()} mode "
+          f"(say or type 'voice mode', 'text mode' or 'quit')\n")
+    say(GREETING, mode)
+    while True:
