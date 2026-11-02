@@ -74,3 +74,19 @@ def main(demand_path=None):
     analysis.plot_decomposition(series, R / "02_decomposition.png")
     analysis.plot_acf(series, R / "03_acf.png")
     analysis.plot_profiles(series, R / "04_profiles.png")
+
+    train, test = du.chronological_split(series)
+        X, y = fc.build_supervised(series)
+        cut = test.index[0]
+        X_tr, y_tr = X[X.index < cut], y[y.index < cut]
+        X_te, y_te = X[X.index >= cut], y[y.index >= cut]
+    
+        preds = {"seasonal_naive": series.shift(168).loc[X_te.index]}
+        print("[forecast] tuning HistGradientBoosting with walk-forward CV ...")
+        gb = fc.tune_hist_gb(X_tr, y_tr)
+        preds["hist_gb"] = pd.Series(gb.predict(X_te), index=X_te.index)
+        print("[forecast] training MLP ...")
+        mlp = fc.train_mlp(X_tr, y_tr)
+        preds["mlp"] = pd.Series(mlp.predict(X_te), index=X_te.index)
+    
+        results = {n: fc.metrics(y_te, p) for n, p in preds.items()}
