@@ -45,17 +45,12 @@ GridWise is an AI-driven tool designed to help municipal electricity utilities p
    - streamlit (dashboard)
    - SpeechRecognition, pyttsx3, gTTS, pyaudio (voice chat)
 
-4. **Prepare the Data**: Download a regional file such as `AEP_hourly.csv` from the [PJM Hourly Energy Consumption](https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption) dataset on Kaggle and place it in the `data` folder. Then generate the synthetic fault reports and chatbot intents:
-   ```
-   python generate_data.py
-   ```
-
-5. **Run the Pipeline**:
+4. **Run the Pipeline**:
    ```
    python run_pipeline.py --demand data/AEP_hourly.csv
    ```
 
-6. **Run the Application**:
+5. **Run the Application**:
    ```
    python cli_chatbot.py      
    streamlit run app.py       
