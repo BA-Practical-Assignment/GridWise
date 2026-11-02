@@ -46,3 +46,11 @@ with tab1:
     st.line_chart(chart)
     msg = fc.describe_forecast(forecast, thr)
     (st.error if (forecast > thr).any() else st.success)(msg)
+
+    with tab2:
+    st.write("Paste a customer fault report and GridWise will classify its category and urgency.")
+    text = st.text_area("Fault report", "A cable is sparking on the ground near Main Road")
+    if st.button("Classify"):
+        res = fcls.classify(fault_models, text)
+        st.write(f"**Category:** {res['category']}  (confidence {res['category_confidence']:.0%})")
+        st.write(f"**Urgency:** {res['urgency']}")
