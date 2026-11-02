@@ -90,3 +90,20 @@ def main(demand_path=None):
         preds["mlp"] = pd.Series(mlp.predict(X_te), index=X_te.index)
     
         results = {n: fc.metrics(y_te, p) for n, p in preds.items()}
+
+    print("[forecast] LSTM (needs torch) ...")
+        lstm = fc.lstm_forecast(train, test)
+        if lstm is not None:
+            common = X_te.index.intersection(lstm["pred"].index)
+            preds["lstm"] = lstm["pred"].loc[common].reindex(X_te.index)
+            results["lstm"] = fc.metrics(y_te.loc[common], lstm["pred"].loc[common])
+        else:
+            print("   torch not installed -> LSTM skipped")
+    
+        print("[forecast] SARIMA on daily means (needs statsmodels) ...")
+        sar = fc.sarima_daily(train, test)
+        extra = {}
+        if sar is not None:
+            extra["sarima_daily"] = sar["metrics"]
+        else:
+            print("   statsmodels not installed -> SARIMA skipped")
