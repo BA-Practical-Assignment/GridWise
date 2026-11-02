@@ -67,3 +67,51 @@ def _get_engine():
         _engine = pyttsx3.init()
         _engine.setProperty("rate", 175)
     return _engine
+
+def speak(text: str) -> bool:
+    """Speak `text` through the computer's speakers (terminal chat). True if it worked."""
+    text = clean_for_speech(text)
+    if _has("pyttsx3"):
+        try:
+            eng = _get_engine()
+            eng.say(text)
+            eng.runAndWait()
+            return True
+        except Exception:
+            pass
+    return False
+
+
+def synthesize(text: str):
+    """Turn text into audio BYTES for a web page (dashboard).
+
+    Returns (audio_bytes, mime_type) or (None, None) if no TTS engine works.
+    Tries offline pyttsx3 (WAV) first, then online gTTS (MP3).
+    """
+    text = clean_for_speech(text)
+    if _has("pyttsx3"):
+        path = None
+        try:
+            fd, path = tempfile.mkstemp(suffix=".wav")
+            os.close(fd)
+            eng = _get_engine()
+            eng.save_to_file(text, path)
+            eng.runAndWait()
+            with open(path, "rb") as f:
+                data = f.read()
+            if len(data) > 100:
+                return data, "audio/wav"
+        except Exception:
+            pass
+        finally:
+            if path and os.path.exists(path):
+                os.remove(path)
+    if _has("gtts"):
+        try:
+            from gtts import gTTS
+            buf = io.BytesIO()
+            gTTS(text=text, lang="en", tld="co.za").write_to_fp(buf)
+            return buf.getvalue(), "audio/mp3"
+        except Exception:
+            pass
+    return None, None
