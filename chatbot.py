@@ -21,6 +21,7 @@ FALLBACK = ("Sorry, I did not quite understand that. I can help you report a pow
             "or share the demand forecast. Could you rephrase?")
 FAULT_INTENTS = {"report_outage", "meter_fault", "streetlight", "cable_damage", "billing_query", "outage_status"}
 
+
 def _pipeline() -> Pipeline:
     feats = FeatureUnion([
         ("word", TfidfVectorizer(ngram_range=(1, 2), lowercase=True)),
@@ -72,7 +73,8 @@ class GridWiseChatbot:
         probs = self.model.predict_proba([_clean(text)])[0]
         i = int(np.argmax(probs))
         return self.model.classes_[i], float(probs[i])
-        def _new_ticket(self, intent: str, text: str) -> str:
+
+    def _new_ticket(self, intent: str, text: str) -> str:
         ticket = "GW-" + uuid.uuid4().hex[:6].upper()
         record = {"ticket": ticket, "intent": intent, "text": text}
         if self.fault_models is not None:

@@ -68,6 +68,7 @@ def _get_engine():
         _engine.setProperty("rate", 175)
     return _engine
 
+
 def speak(text: str) -> bool:
     """Speak `text` through the computer's speakers (terminal chat). True if it worked."""
     text = clean_for_speech(text)
@@ -115,6 +116,8 @@ def synthesize(text: str):
         except Exception:
             pass
     return None, None
+
+
 
 def _recognise(recognizer, audio) -> str | None:
     """Try the online recogniser, then the offline one. Returns text or None."""

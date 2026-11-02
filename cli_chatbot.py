@@ -21,6 +21,7 @@ def build_bot() -> GridWiseChatbot:
     forecast_fn = fc.make_forecast_fn(joblib.load(bundle_path)) if bundle_path.exists() else None
     return GridWiseChatbot(fault_models=fault_models, forecast_fn=forecast_fn).train()
 
+
 def choose_mode() -> str:
     print("How would you like to talk to GridWise?")
     print("  1) Text chat   (type your messages)")
@@ -47,6 +48,7 @@ def voice_ready() -> bool:
     print("   Install with:  pip install SpeechRecognition pyaudio pyttsx3")
     print("   Staying in text chat.\n")
     return False
+
 
 def say(text: str, mode: str):
     print(f"Bot: {text}\n")
@@ -76,7 +78,7 @@ def chat(mode: str):
           f"(say or type 'voice mode', 'text mode' or 'quit')\n")
     say(GREETING, mode)
     while True:
-         try:
+        try:
             msg, mode = get_user_input(mode)
         except (EOFError, KeyboardInterrupt):
             break

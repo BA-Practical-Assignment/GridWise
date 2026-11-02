@@ -21,6 +21,7 @@ def load_assets():
     metrics = json.load(open(config.RESULTS_DIR / "metrics.json"))
     return bundle, fault_models, bot, metrics
 
+
 try:
     bundle, fault_models, bot, metrics = load_assets()
 except FileNotFoundError:
@@ -47,7 +48,7 @@ with tab1:
     msg = fc.describe_forecast(forecast, thr)
     (st.error if (forecast > thr).any() else st.success)(msg)
 
-    with tab2:
+with tab2:
     st.write("Paste a customer fault report and GridWise will classify its category and urgency.")
     text = st.text_area("Fault report", "A cable is sparking on the ground near Main Road")
     if st.button("Classify"):
@@ -85,33 +86,34 @@ with tab3:
             if audio_bytes:
                 st.session_state.reply_audio = (audio_bytes, mime)
 
-       
-        for who, msg in st.session_state.history:
-            with st.chat_message("assistant" if who == "bot" else "user"):
-                st.write(msg)
-        reply_audio = st.session_state.pop("reply_audio", None)      
-        if reply_audio:
-            st.audio(reply_audio[0], format=reply_audio[1], autoplay=True)
+    
+    for who, msg in st.session_state.history:
+        with st.chat_message("assistant" if who == "bot" else "user"):
+            st.write(msg)
+    reply_audio = st.session_state.pop("reply_audio", None)      
+    if reply_audio:
+        st.audio(reply_audio[0], format=reply_audio[1], autoplay=True)
 
-        if voice_mode:
-            mic_key = f"mic_{st.session_state.mic_n}"
-            if hasattr(st, "audio_input"):
-                clip = st.audio_input("Press the microphone, speak, then press stop", key=mic_key)
-            else:   
-                clip = st.file_uploader("Upload a WAV recording of your question", type=["wav"], key=mic_key)
-            if clip is not None:
-                with st.spinner("Listening..."):
-                    heard = voice.transcribe(clip.getvalue())
-                st.session_state.mic_n += 1                  
-                if heard:
-                    handle_message(heard, speak=True)
-                else:
-                    st.session_state.history.append(
-                        ("bot", "Sorry, I could not hear that clearly. Please try again or type your message."))
-                st.rerun()            
+    
+    if voice_mode:
+        mic_key = f"mic_{st.session_state.mic_n}"
+        if hasattr(st, "audio_input"):
+            clip = st.audio_input("Press the microphone, speak, then press stop", key=mic_key)
+        else:   
+            clip = st.file_uploader("Upload a WAV recording of your question", type=["wav"], key=mic_key)
+        if clip is not None:
+            with st.spinner("Listening..."):
+                heard = voice.transcribe(clip.getvalue())
+            st.session_state.mic_n += 1                  
+            if heard:
+                handle_message(heard, speak=True)
+            else:
+                st.session_state.history.append(
+                    ("bot", "Sorry, I could not hear that clearly. Please try again or type your message."))
+            st.rerun()
 
-
-        prompt = st.chat_input("Type here: outages, billing, faults, tips or the demand forecast")
+    
+    prompt = st.chat_input("Type here: outages, billing, faults, tips or the demand forecast")
     if prompt:
         handle_message(prompt, speak=speak_replies)
         st.rerun()

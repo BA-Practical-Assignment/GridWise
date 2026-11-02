@@ -46,6 +46,7 @@ def make_features(s: pd.Series, country: str = "US") -> pd.DataFrame:
     df["hour_cos"] = np.cos(2 * np.pi * idx.hour / 24)
     return df
 
+
 def build_supervised(s: pd.Series, country: str = "US"):
     X = make_features(s, country)
     y = s
@@ -77,6 +78,7 @@ def tune_hist_gb(X_train, y_train) -> HistGradientBoostingRegressor:
     model.cv_mae_ = best_score
     return model
 
+
 def train_mlp(X_train, y_train):
     model = make_pipeline(
         StandardScaler(),
@@ -101,6 +103,8 @@ def sarima_daily(train: pd.Series, test: pd.Series):
     pred = fit.forecast(steps=len(d_test))
     return {"actual": d_test, "pred": pd.Series(pred.values, index=d_test.index),
             "metrics": metrics(d_test.values, pred.values)}
+
+
 
 def lstm_forecast(train: pd.Series, test: pd.Series, window: int = 168, epochs: int = 12):
     
@@ -172,6 +176,8 @@ def lstm_forecast(train: pd.Series, test: pd.Series, window: int = 168, epochs: 
     idx = target_idx[is_test]
     return {"pred": pd.Series(pred, index=idx), "actual": pd.Series(actual, index=idx),
             "metrics": metrics(actual, pred)}
+
+
 
 def forecast_next_day(model, history: pd.Series, country: str = "US") -> pd.Series:
     """Forecast the 24 hours after the last observation in `history`."""
