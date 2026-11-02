@@ -76,3 +76,37 @@ def chat(mode: str):
           f"(say or type 'voice mode', 'text mode' or 'quit')\n")
     say(GREETING, mode)
     while True:
+         try:
+            msg, mode = get_user_input(mode)
+        except (EOFError, KeyboardInterrupt):
+            break
+        low = msg.strip().lower()
+        if not low:
+            continue
+        if low in QUIT_WORDS:
+            break
+        if low in TO_VOICE:
+            if voice_ready():
+                mode = "voice"
+                say("Voice mode on. I'm listening.", mode)
+            continue
+        if low in TO_TEXT:
+            mode = "text"
+            say("Text mode on. Type your message.", mode)
+            continue
+        r = bot.reply(msg)
+        say(r["reply"], mode)
+        if r.get("intent") == "goodbye":
+            break
+    if bot.tickets:
+        print("Tickets logged this session:")
+        for t in bot.tickets:
+            print(f"  {t['ticket']}  {t.get('category', t['intent'])}  urgency={t.get('urgency', '-')}")
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="Chat with the GridWise assistant")
+    ap.add_argument("--mode", choices=["text", "voice"], default=None,
+                    help="start in text or voice mode (default: ask)")
+    args = ap.parse_args()
+    chat(args.mode or choose_mode())
