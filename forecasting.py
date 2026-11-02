@@ -101,3 +101,74 @@ def sarima_daily(train: pd.Series, test: pd.Series):
     pred = fit.forecast(steps=len(d_test))
     return {"actual": d_test, "pred": pd.Series(pred.values, index=d_test.index),
             "metrics": metrics(d_test.values, pred.values)}
+
+def lstm_forecast(train: pd.Series, test: pd.Series, window: int = 168, epochs: int = 12):
+    
+    try:
+        import torch
+        from torch import nn
+    except ImportError:
+        return None
+
+    torch.manual_seed(config.RANDOM_STATE)
+    full = pd.concat([train, test])
+    mu, sd = train.mean(), train.std()
+    z = ((full - mu) / sd).values.astype("float32")
+
+   
+    n = len(z) - window - H + 1
+    Xs = np.stack([z[i:i + window] for i in range(n)])[..., None]
+    ys = np.array([z[i + window - 1 + H] for i in range(n)], dtype="float32")
+    target_idx = full.index[window - 1 + H: window - 1 + H + n]
+
+    is_test = target_idx >= test.index[0]
+    X_tr, y_tr = Xs[~is_test], ys[~is_test]
+    X_te, y_te = Xs[is_test], ys[is_test]
+   
+    v = int(len(X_tr) * 0.9)
+    X_fit, y_fit, X_val, y_val = X_tr[:v], y_tr[:v], X_tr[v:], y_tr[v:]
+
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.lstm = nn.LSTM(1, 48, batch_first=True)
+            self.drop = nn.Dropout(0.2)
+            self.out = nn.Linear(48, 1)
+
+        def forward(self, x):
+            o, _ = self.lstm(x)
+            return self.out(self.drop(o[:, -1, :])).squeeze(-1)
+
+    net = Net()
+    opt = torch.optim.Adam(net.parameters(), lr=1e-3)
+    loss_fn = nn.MSELoss()
+    Xf, yf = torch.tensor(X_fit), torch.tensor(y_fit)
+    Xv, yv = torch.tensor(X_val), torch.tensor(y_val)
+    best_val, best_state, patience = np.inf, None, 0
+    for _ in range(epochs):
+        net.train()
+        perm = torch.randperm(len(Xf))
+        for i in range(0, len(Xf), 256):
+            b = perm[i:i + 256]
+            opt.zero_grad()
+            loss = loss_fn(net(Xf[b]), yf[b])
+            loss.backward()
+            opt.step()
+        net.eval()
+        with torch.no_grad():
+            val = loss_fn(net(Xv), yv).item()
+        if val < best_val:
+            best_val, best_state, patience = val, {k: t.clone() for k, t in net.state_dict().items()}, 0
+        else:
+            patience += 1
+            if patience >= 3:          
+                break
+    net.load_state_dict(best_state)
+    net.eval()
+    with torch.no_grad():
+        pred_z = net(torch.tensor(X_te)).numpy()
+    pred = pred_z * sd + mu
+    actual = y_te * sd + mu
+    idx = target_idx[is_test]
+    return {"pred": pd.Series(pred, index=idx), "actual": pd.Series(actual, index=idx),
+            "metrics": metrics(actual, pred)}
