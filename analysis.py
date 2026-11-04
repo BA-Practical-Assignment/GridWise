@@ -1,0 +1,84 @@
+import numpy as np
+import pandas as pd
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+NAVY, AMBER, GREY = "#12284C", "#F2A900", "#8A94A6"
+
+
+def classical_decompose(s: pd.Series, period: int = 24 * 7) -> pd.DataFrame:
+    """Additive classical decomposition: trend (centred moving average),
+    seasonal (mean of detrended values per position in the cycle), residual."""
+    trend = s.rolling(window=period, center=True, min_periods=period // 2).mean()
+    detrended = s - trend
+    pos = np.arange(len(s)) % period
+    seasonal_means = detrended.groupby(pos).mean()
+    seasonal = pd.Series(seasonal_means.values[pos], index=s.index)
+    resid = s - trend - seasonal
+    return pd.DataFrame({"observed": s, "trend": trend, "seasonal": seasonal, "residual": resid})
+
+
+def autocorrelation(s: pd.Series, max_lag: int = 24 * 8) -> np.ndarray:
+    x = s.values - s.values.mean()
+    denom = np.dot(x, x)
+    return np.array([np.dot(x[: len(x) - k], x[k:]) / denom for k in range(max_lag + 1)])
+
+
+def plot_overview(s: pd.Series, out):
+    fig, ax = plt.subplots(figsize=(10, 3.4))
+    ax.plot(s.index, s.values, color=NAVY, lw=0.4)
+    ax.set_title("Hourly electricity demand (full history)")
+    ax.set_ylabel("Demand (MW)")
+    ax.grid(alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def plot_decomposition(s: pd.Series, out):
+    
+    recent = s.iloc[-24 * 365:]
+    d = classical_decompose(recent)
+    fig, axes = plt.subplots(4, 1, figsize=(10, 7), sharex=True)
+    for ax, col, color in zip(axes, d.columns, [NAVY, AMBER, "#2E7D6B", GREY]):
+        ax.plot(d.index, d[col], color=color, lw=0.6)
+        ax.set_ylabel(col)
+        ax.grid(alpha=0.25)
+    axes[0].set_title("Classical additive decomposition (weekly cycle), last 12 months")
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def plot_acf(s: pd.Series, out):
+    acf = autocorrelation(s)
+    fig, ax = plt.subplots(figsize=(10, 3.2))
+    ax.bar(range(len(acf)), acf, color=NAVY, width=0.8)
+    for lag in (24, 48, 168):
+        ax.axvline(lag, color=AMBER, ls="--", lw=1)
+        ax.text(lag + 1, 0.9, f"{lag}h", color=AMBER, fontsize=8)
+    ax.set_title("Autocorrelation of hourly demand (peaks at 24h and 168h = daily and weekly seasonality)")
+    ax.set_xlabel("Lag (hours)")
+    ax.set_ylabel("ACF")
+    ax.grid(alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def plot_profiles(s: pd.Series, out):
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.2))
+    s.groupby(s.index.hour).mean().plot(ax=axes[0], color=NAVY)
+    axes[0].set_title("Average by hour of day")
+    s.groupby(s.index.dayofweek).mean().plot(ax=axes[1], color=NAVY, marker="o")
+    axes[1].set_title("Average by day of week (0=Mon)")
+    s.groupby(s.index.month).mean().plot(ax=axes[2], color=NAVY, marker="o")
+    axes[2].set_title("Average by month")
+    for ax in axes:
+        ax.set_ylabel("MW")
+        ax.grid(alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
