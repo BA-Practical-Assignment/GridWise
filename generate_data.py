@@ -1,0 +1,249 @@
+import json
+import random
+
+import numpy as np
+import pandas as pd
+import config
+
+def generate_demand(years: int = 4, seed: int = config.RANDOM_STATE) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    idx = pd.date_range("2014-01-01", periods=years * 365 * 24, freq="h")
+    hour = idx.hour.values
+    dow = idx.dayofweek.values
+    doy = idx.dayofyear.values
+
+    base = 15000.0
+    trend = np.linspace(0, 600, len(idx))                                   
+    daily = 2600 * np.sin((hour - 9) / 24 * 2 * np.pi) \
+        + 900 * np.sin((hour - 3) / 12 * 2 * np.pi)                         
+    weekly = np.where(dow >= 5, -1400, 0)                                  
+    yearly = 2200 * np.cos((doy - 20) / 365 * 2 * np.pi) \
+        + 1200 * np.cos((doy - 200) / 365 * 4 * np.pi)                      
+    noise = rng.normal(0, 450, len(idx))
+    demand = base + trend + daily + weekly + yearly + noise
+
+    holiday_mask = np.array([(d.month, d.day) in {(1, 1), (7, 4), (12, 25), (12, 26)} for d in idx])
+    demand[holiday_mask] -= 1800
+
+    for _ in range(years * 2):
+        start = rng.integers(0, len(idx) - 96)
+        demand[start:start + 72] += rng.uniform(1500, 3000)
+
+    return pd.DataFrame({"Datetime": idx, "DEMAND_MW": demand.round(1)})
+
+LOCATIONS = ["Main Road", "the school", "Church Street", "our street", "the clinic", "Block C",
+             "the shopping centre", "Ward 7", "the taxi rank", "Park Avenue", "the industrial area",
+             "Section B", "Mandela Drive", "the hospital", "our house","Collegepark", "the stadium","the university", "the police station", "the fire station",]
+
+TEMPLATES = {
+    "outage": [
+        "There is no electricity at {loc} since this morning",
+        "Power went off at {loc} and has not come back",
+        "We have been without power for hours near {loc}",
+        "the lights are out in {loc} please help",
+        "Total blackout at {loc} please send a team",
+        "electricity is off again at {loc}",
+        "No power in the whole area around {loc}",
+        "our power tripped and the whole of {loc} is dark",
+    ],
+    "billing": [
+        "My electricity bill is too high this month",
+        "I was charged twice for my account",
+        "I paid my bill but it still shows outstanding",
+        "The amount on my statement does not match my meter reading",
+        "I want to query my electricity account balance",
+        "I never received my bill for last month",
+        "Why was I billed for estimated usage",
+        "my prepaid token was bought but the units did not load",
+    ],
+    "meter_fault": [
+        "My meter is not displaying anything",
+        "The prepaid meter keeps beeping and shows an error",
+        "Meter at {loc} is running too fast",
+        "The electricity meter box is damaged and sparking",
+        "my smart meter stopped working",
+        "Meter reading looks wrong and the display is flickering",
+        "The meter will not accept my token",
+        "Our meter was tampered with and needs inspection",
+    ],
+    "streetlight": [
+        "The street light at {loc} is not working",
+        "Streetlights have been off for a week at {loc}",
+        "A street light is flickering all night near {loc}",
+        "the lamp post outside {loc} is dark and it is unsafe",
+        "Several street lights are on during the day at {loc}",
+        "No lights on the road at {loc} please fix",
+    ],
+    "cable_damage": [
+        "A power line has fallen down at {loc}",
+        "There are exposed wires hanging near {loc}",
+        "A cable is sparking on the ground at {loc}",
+        "The transformer at {loc} is smoking and making a loud noise",
+        "A tree fell on the electricity cables at {loc}",
+        "Broken pole and live wires on the road at {loc}",
+        "A cable was cut by construction workers at {loc}",
+        "pole is leaning and the wires are very low at {loc}",
+    ],
+}
+
+FILLERS = ["", "", "", " please urgent", " thanks", " this is the second time I am reporting",
+           " children are at home", " hello", " can someone assist", " ASAP"]
+
+
+def _typo(text: str, rng: random.Random, p: float = 0.04) -> str:
+    chars = list(text)
+    for i in range(len(chars) - 1):
+        if chars[i].isalpha() and rng.random() < p:
+            chars[i], chars[i + 1] = chars[i + 1], chars[i]
+    return "".join(chars)
+
+
+def _urgency(category: str, text: str) -> str:
+    t = text.lower()
+    if category == "cable_damage" or any(w in t for w in ["sparking", "smoking", "fallen", "live wires", "unsafe"]):
+        return "high"
+    if category in {"outage", "meter_fault"} or "hospital" in t or "clinic" in t:
+        return "medium"
+    return "low"
+
+
+def generate_fault_reports(n_per_class: int = 300, seed: int = config.RANDOM_STATE) -> pd.DataFrame:
+    rng = random.Random(seed)
+    rows = []
+    for cat, templates in TEMPLATES.items():
+        for _ in range(n_per_class):
+            text = rng.choice(templates).format(loc=rng.choice(LOCATIONS)) + rng.choice(FILLERS)
+            if rng.random() < 0.5:
+                text = _typo(text, rng)
+            if rng.random() < 0.3:
+                text = text.lower()
+            rows.append({"report": text.strip(), "category": cat, "urgency": _urgency(cat, text)})
+    df = pd.DataFrame(rows).sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df
+
+INTENTS = {
+    "greeting": {
+        "patterns": ["hello", "hi", "hey there", "good morning", "good afternoon", "good evening",
+                     "howzit", "is anyone there", "hi gridwise", "hello can you help me"],
+        "responses": ["Hello! I'm the GridWise assistant. I can help you report a fault, check outage "
+                      "information, answer billing questions or share electricity-saving tips. What do you need?"],
+    },
+    "goodbye": {
+        "patterns": ["bye", "goodbye", "see you later", "that is all", "thanks bye", "talk later",
+                     "i am done", "cheers bye"],
+        "responses": ["Goodbye! Stay safe and thank you for contacting the utility."],
+    },
+    "thanks": {
+        "patterns": ["thanks", "thank you", "thanks a lot", "much appreciated", "that was helpful",
+                     "great thanks", "awesome thank you"],
+        "responses": ["You're welcome! Is there anything else I can help you with?"],
+    },
+    "report_outage": {
+        "patterns": ["there is no power", "my electricity is off", "power outage in my area",
+                     "the lights went out", "we have a blackout", "no electricity since morning",
+                     "how do i report a power cut", "power is off in my street", "report an outage",
+                     "electricity went off and has not come back"],
+        "responses": ["I'm sorry about the power cut. I've logged an outage report for your area (ticket {ticket}). "
+                      "First check that your own circuit breaker has not tripped. Please tell me your street or "
+                      "ward so the team can be dispatched."],
+    },
+    "outage_status": {
+        "patterns": ["when will the power be back", "is there a planned outage", "outage status",
+                     "how long will the power be off", "is there load reduction today",
+                     "when will electricity be restored", "check maintenance schedule",
+                     "are there scheduled power cuts"],
+        "responses": ["Planned maintenance and restoration times are published by the utility for each area. "
+                      "Give me your ward or suburb and I will pass your query to the control room "
+                      "(ticket {ticket}). For live updates, check the utility's official notices."],
+    },
+    "billing_query": {
+        "patterns": ["my bill is too high", "i was charged twice", "i want to query my account",
+                     "how do i pay my electricity bill", "i did not receive my statement",
+                     "my prepaid token did not load", "why is my account so high",
+                     "dispute my electricity bill", "i paid but it still shows owing",
+                     "where can i buy prepaid electricity"],
+        "responses": ["I can help log a billing query (ticket {ticket}). Please have your account number and "
+                      "the date of your last payment ready. A billing officer will review the account. "
+                      "Prepaid customers should keep their token receipt."],
+    },
+    "meter_fault": {
+        "patterns": ["my meter is not working", "the meter is beeping", "meter shows an error",
+                     "my prepaid meter will not accept the token", "the meter display is blank",
+                     "meter is running too fast", "i think my meter is faulty",
+                     "report a faulty meter"],
+        "responses": ["I've logged a meter fault (ticket {ticket}). Please do not open or repair the meter "
+                      "yourself. A technician will inspect it. Note your meter number if you can."],
+    },
+    "streetlight": {
+        "patterns": ["the street light is broken", "street lights are off on my road",
+                     "report a faulty street light", "the lamp post is dark",
+                     "street light flickering", "no lights on the road at night",
+                     "streetlight on during the day"],
+        "responses": ["Thank you for reporting the street light (ticket {ticket}). Please tell me the street name "
+                      "and the nearest landmark so the maintenance crew can find it."],
+    },
+    "cable_damage": {
+        "patterns": ["a power line has fallen", "there are exposed wires", "a cable is sparking",
+                     "the transformer is smoking", "a tree fell on the power lines",
+                     "live wires on the road", "broken electricity pole",
+                     "dangerous cable near my house"],
+        "responses": ["SAFETY FIRST: stay at least 10 metres away from fallen or damaged lines and keep "
+                      "other people and animals away. Do not touch anything in contact with the line. "
+                      "I've flagged this as HIGH urgency (ticket {ticket}). Please also call the utility's "
+                      "emergency number: [insert emergency number]."],
+    },
+    "saving_tips": {
+        "patterns": ["how can i save electricity", "tips to reduce my electricity usage",
+                     "how do i lower my bill", "what appliances use the most power",
+                     "how can i help during peak demand", "energy saving advice",
+                     "reduce electricity consumption at home"],
+        "responses": ["Tips: (1) switch off geysers outside the morning and evening peaks, (2) use LED lighting, "
+                      "(3) run heavy appliances off-peak, (4) unplug idle electronics, (5) use a timer on the geyser. "
+                      "Reducing use during peak hours helps the whole grid."],
+    },
+    "demand_forecast": {
+        "patterns": ["what is the demand forecast", "show tomorrow's electricity demand",
+                     "will demand be high tomorrow", "forecast for the next 24 hours",
+                     "what is the expected load", "peak demand prediction",
+                     "when is peak demand tomorrow", "predict electricity demand"],
+        "responses": ["{forecast_text}"],
+    },
+    "contact_info": {
+        "patterns": ["how do i contact the utility", "what is your phone number", "where is the nearest office",
+                     "customer service contact", "office hours", "who do i call"],
+        "responses": ["You can reach the utility's customer service office during working hours: "
+                      "[insert contact details]. This chatbot is available 24 hours a day."],
+    },
+}
+
+EXTRA_PATTERNS = {
+    "greeting": ["hey", "hello gridwise assistant", "good day", "hi there can you help", "morning", "hello is this the electricity chatbot"],
+    "goodbye": ["ok bye", "see you", "i have to go now", "no that is everything thanks", "have a good day bye", "goodbye for now"],
+    "thanks": ["cheers", "thank you very much", "many thanks", "thanks for the help", "that helps thank you", "appreciate it"],
+    "report_outage": ["the power is out", "no electricity in our area", "power cut in my street", "we are in the dark", "our lights are off and have been for hours", "electricity is gone", "there is a blackout in my suburb", "i want to report that the power is off"],
+    "outage_status": ["when is electricity coming back", "when will the lights come back on", "is the power cut planned", "what time will power be restored", "how long is the maintenance outage", "is my area affected by load reduction", "when is the next scheduled outage"],
+    "billing_query": ["my bill is wrong", "billing problem on my account", "i have a question about my statement", "i was overcharged", "how do i buy electricity units", "my payment is not reflecting", "the amount i owe is incorrect", "how to pay my account"],
+    "meter_fault": ["meter keeps beeping", "the meter is broken", "my smart meter has stopped", "prepaid meter is not taking units", "meter screen is dead", "electricity meter is faulty", "meter is sparking", "my meter shows wrong readings"],
+    "streetlight": ["street lamp not working", "the light on our road is out", "lamp post is broken", "street lights not coming on at night", "report broken street lighting", "street light stays on all day", "the road is dark because the lights are off"],
+    "cable_damage": ["wire fell down and is sparking", "a pole has fallen on the road", "cables hanging low", "there is smoke coming from the transformer", "a live wire is lying on the ground", "tree on the power line", "electric pole is broken and dangerous", "the substation box is sparking"],
+    "saving_tips": ["can i get tips to use less power", "how to use less electricity", "ways to cut my power usage", "how do i reduce peak hour usage", "advice to save energy at home", "how can i lower electricity use", "what can i do to use less electricity"],
+    "demand_forecast": ["what will demand be tomorrow", "how much electricity will be used tomorrow", "show me the load forecast", "is tomorrow a high demand day", "what is the peak hour tomorrow", "next 24 hour demand", "expected electricity demand"],
+    "contact_info": ["phone number for the electricity office", "how can i reach customer care", "where do i go to speak to someone", "contact details please", "what are your opening hours", "can i speak to a person"],
+}
+for _k, _v in EXTRA_PATTERNS.items():
+    INTENTS[_k]["patterns"].extend(_v)
+
+
+def main():
+    config.DATA_DIR.mkdir(exist_ok=True)
+    demand = generate_demand()
+    demand.to_csv(config.SYNTHETIC_DEMAND_CSV, index=False)
+    faults = generate_fault_reports()
+    faults.to_csv(config.FAULT_REPORTS_CSV, index=False)
+    with open(config.INTENTS_JSON, "w", encoding="utf-8") as f:
+        json.dump(INTENTS, f, indent=2)
+    print(f"demand rows: {len(demand)} | fault reports: {len(faults)} | intents: {len(INTENTS)}")
+
+
+if __name__ == "__main__":
+    main()
